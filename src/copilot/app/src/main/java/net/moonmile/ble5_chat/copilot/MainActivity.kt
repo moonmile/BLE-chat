@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        bleChatService = BleChatServiceImpl(applicationContext)
+        bleChatService = BleChatServiceImpl(applicationContext, selfId)
         observeBleService()
 
         setContent {
@@ -118,6 +118,20 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             bleChatService.observeEffects().collectLatest { effect ->
                 _uiEffects.emit(effect)
+            }
+        }
+
+        lifecycleScope.launch {
+            bleChatService.observePeerCount().collectLatest { count ->
+                _uiState.value = _uiState.value.copy(peerCount = count)
+            }
+        }
+
+        lifecycleScope.launch {
+            bleChatService.incomingMessages().collect { message ->
+                val messages = _uiState.value.messages.toMutableList()
+                messages.add(message)
+                _uiState.value = _uiState.value.copy(messages = messages)
             }
         }
     }

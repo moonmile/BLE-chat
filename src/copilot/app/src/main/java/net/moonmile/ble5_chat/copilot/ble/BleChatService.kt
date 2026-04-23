@@ -57,4 +57,9 @@ interface BleChatService {
      * Bluetooth アダプタ現在状態を即時反映
      */
     suspend fun refreshBleState()
+
+    /**
+     * アクティブなピア数を監視
+     */
+    fun observePeerCount(): Flow<Int>
 }
