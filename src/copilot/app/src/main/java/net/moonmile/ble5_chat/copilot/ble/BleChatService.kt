@@ -2,6 +2,7 @@ package net.moonmile.ble5_chat.copilot.ble
 
 import kotlinx.coroutines.flow.Flow
 import net.moonmile.ble5_chat.copilot.model.ChatMessage
+import net.moonmile.ble5_chat.copilot.model.ChatUiEffect
 
 /**
  * BLE ファサード：BLE 初期化、Advertiser/Scanner の開始停止管理
@@ -41,4 +42,19 @@ interface BleChatService {
      * @param state BLE アダプタの状態（BluetoothAdapter.STATE_* ）
      */
     suspend fun onBleAdapterStateChanged(state: Int)
+
+    /**
+     * 現在の BLE 有効状態を監視
+     */
+    fun observeBleEnabled(): Flow<Boolean>
+
+    /**
+     * BLE 関連の 1 回性イベントを監視
+     */
+    fun observeEffects(): Flow<ChatUiEffect>
+
+    /**
+     * Bluetooth アダプタ現在状態を即時反映
+     */
+    suspend fun refreshBleState()
 }
