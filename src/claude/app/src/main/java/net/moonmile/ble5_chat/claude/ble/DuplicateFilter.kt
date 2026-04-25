@@ -1,0 +1,20 @@
+package net.moonmile.ble5_chat.claude.ble
+
+import java.util.concurrent.ConcurrentHashMap
+
+class DuplicateFilter(private val ttlMs: Long = 30_000L) {
+    private val seen = ConcurrentHashMap<String, Long>()
+
+    fun isDuplicate(messageId: String): Boolean {
+        val now = System.currentTimeMillis()
+        evictExpired(now)
+        return seen.putIfAbsent(messageId, now) != null
+    }
+
+    private fun evictExpired(now: Long) {
+        val threshold = now - ttlMs
+        seen.entries.removeIf { it.value < threshold }
+    }
+
+    fun clear() = seen.clear()
+}
