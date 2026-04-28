@@ -18,6 +18,7 @@ fun ChatScreen(
     onInputChanged: (String) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -27,26 +28,21 @@ fun ChatScreen(
             .imePadding()
     ) {
         ChatHeader(
-            state = state,
-            modifier = Modifier.fillMaxWidth()
+            state                = state,
+            onNavigateToSettings = onNavigateToSettings,
+            modifier             = Modifier.fillMaxWidth()
         )
-
         MessageList(
             messages = state.messages,
-            selfId = selfId,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+            selfId   = selfId,
+            modifier = Modifier.weight(1f).fillMaxWidth()
         )
-
         MessageInputBar(
-            inputText = state.inputText,
-            canSend = state.canSend,
-            onTextChange = { text ->
-                onInputChanged(text.take(MessageCodec.MAX_TEXT_LENGTH))
-            },
-            onSendClick = { onSend(state.inputText) },
-            modifier = Modifier.fillMaxWidth()
+            inputText   = state.inputText,
+            canSend     = state.canSend,
+            onTextChange = { text -> onInputChanged(text.take(MessageCodec.MAX_TEXT_LENGTH)) },
+            onSendClick  = { onSend(state.inputText) },
+            modifier     = Modifier.fillMaxWidth()
         )
     }
 }
