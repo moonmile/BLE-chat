@@ -2,9 +2,10 @@ package net.moonmile.ble5_chat.claude.ble
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import net.moonmile.ble5_chat.claude.BuildConfig
 import java.util.concurrent.ConcurrentHashMap
 
-class PeerRegistry(private val timeoutMs: Long = 60_000L) {
+class PeerRegistry(private val timeoutMs: Long = BuildConfig.PEER_TIMEOUT_SEC * 1000L) {
     private val peers = ConcurrentHashMap<String, Long>()
 
     private val _peerCount = MutableStateFlow(0)

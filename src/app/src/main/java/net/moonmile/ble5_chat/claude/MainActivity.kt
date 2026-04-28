@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -37,6 +38,8 @@ import net.moonmile.ble5_chat.claude.model.ChatUiState
 import net.moonmile.ble5_chat.claude.repository.ChatRepository
 import net.moonmile.ble5_chat.claude.repository.ChatRepositoryImpl
 import net.moonmile.ble5_chat.claude.ui.ChatScreen
+import net.moonmile.ble5_chat.claude.ui.CopyrightScreen
+import net.moonmile.ble5_chat.claude.ui.SettingsScreen
 import net.moonmile.ble5_chat.claude.ui.theme.BLE5ChatClaudeTheme
 import net.moonmile.ble5_chat.claude.util.AppLogger
 import net.moonmile.ble5_chat.claude.util.ChatError
@@ -44,17 +47,18 @@ import net.moonmile.ble5_chat.claude.util.DefaultDispatcherProvider
 import net.moonmile.ble5_chat.claude.util.ErrorHandler
 import java.util.UUID
 
+private enum class AppScreen {
+    CHAT,
+    SETTINGS,
+    COPYRIGHT
+}
+
 class MainActivity : ComponentActivity() {
 
     private val TAG = "MainActivity"
 
-    // Stable device ID for this session (short 8-char UUID prefix)
-    private val selfId: String by lazy {
-        getPreferences(Context.MODE_PRIVATE).getString("selfId", null)
-            ?: UUID.randomUUID().toString().take(8).also { id ->
-                getPreferences(Context.MODE_PRIVATE).edit().putString("selfId", id).apply()
-            }
-    }
+    private val preferences by lazy { getPreferences(Context.MODE_PRIVATE) }
+    private val selfIdState = MutableStateFlow("")
 
     private val dispatchers = DefaultDispatcherProvider()
     private val duplicateFilter = DuplicateFilter()
@@ -90,6 +94,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        ensureSelfIdInitialized()
+
         collectEffects()
         requestBlePermissionsOrInit()
 
@@ -100,17 +106,44 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val state by uiState.collectAsState()
-                    ChatScreen(
-                        state = state,
-                        selfId = selfId,
-                        onSend = { text -> sendMessage(text) },
-                        onInputChanged = { text ->
-                            uiState.update { it.copy(inputText = text) }
-                        },
-                        onStart = { repository.start() },
-                        onStop = { repository.stop() },
-                        modifier = Modifier.statusBarsPadding()
-                    )
+                    val selfId by selfIdState.collectAsState()
+                    var currentScreen by androidx.compose.runtime.remember {
+                        androidx.compose.runtime.mutableStateOf(AppScreen.CHAT)
+                    }
+
+                    when (currentScreen) {
+                        AppScreen.CHAT -> {
+                            ChatScreen(
+                                state = state,
+                                selfId = selfId,
+                                onSend = { text -> sendMessage(text) },
+                                onInputChanged = { text ->
+                                    uiState.update { it.copy(inputText = text) }
+                                },
+                                onStart = { repository.start() },
+                                onStop = { repository.stop() },
+                                onOpenSettings = { currentScreen = AppScreen.SETTINGS },
+                                modifier = Modifier.statusBarsPadding()
+                            )
+                        }
+
+                        AppScreen.SETTINGS -> {
+                            SettingsScreen(
+                                selfId = selfId,
+                                onSelfIdChange = { updateSelfId(it) },
+                                onNavigateToCopyright = { currentScreen = AppScreen.COPYRIGHT },
+                                onNavigateBack = { currentScreen = AppScreen.CHAT },
+                                modifier = Modifier.statusBarsPadding()
+                            )
+                        }
+
+                        AppScreen.COPYRIGHT -> {
+                            CopyrightScreen(
+                                onNavigateBack = { currentScreen = AppScreen.SETTINGS },
+                                modifier = Modifier.statusBarsPadding()
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -187,6 +220,7 @@ class MainActivity : ComponentActivity() {
 
     private fun sendMessage(text: String) {
         if (text.isBlank()) return
+        val selfId = selfIdState.value
         val message = ChatMessage(
             messageId = UUID.randomUUID().toString(),
             senderId = selfId,
@@ -201,6 +235,25 @@ class MainActivity : ComponentActivity() {
             )
         }
         repository.publishMessage(message)
+    }
+
+    private fun ensureSelfIdInitialized() {
+        val savedId = preferences.getString("selfId", null)
+        val initialId = if (!savedId.isNullOrBlank()) {
+            savedId
+        } else {
+            UUID.randomUUID().toString().take(8).also { generatedId ->
+                preferences.edit().putString("selfId", generatedId).apply()
+            }
+        }
+        selfIdState.value = initialId
+    }
+
+    private fun updateSelfId(newId: String) {
+        val normalizedId = newId.trim().take(8)
+        if (normalizedId.isBlank()) return
+        selfIdState.value = normalizedId
+        preferences.edit().putString("selfId", normalizedId).apply()
     }
 
     private fun handleBleError(error: ChatError) {

@@ -16,7 +16,10 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
+        buildConfigField("int", "ADVERTISE_DURATION_SEC", "10")
+        buildConfigField("int", "DUPLICATE_FILTER_TTL_SEC", "30")
+        buildConfigField("int", "PEER_TIMEOUT_SEC", "60")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,6 +38,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }
