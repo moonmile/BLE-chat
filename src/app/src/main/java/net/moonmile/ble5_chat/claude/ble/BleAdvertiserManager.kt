@@ -12,6 +12,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import net.moonmile.ble5_chat.claude.BuildConfig
 import net.moonmile.ble5_chat.claude.model.AdvPacket
 import net.moonmile.ble5_chat.claude.util.AppLogger
 import net.moonmile.ble5_chat.claude.util.DispatcherProvider
@@ -22,7 +23,7 @@ class BleAdvertiserManager(
 ) {
     private val TAG = "BleAdvertiserManager"
     private val MANUFACTURER_ID = 0x4D4E  // "MN" = moonmile
-    private val ADVERTISE_DURATION_MS = 10_000L
+    private val ADVERTISE_DURATION_MS = BuildConfig.ADVERTISE_DURATION_SEC * 1_000L
 
     private val scope = CoroutineScope(dispatchers.io() + SupervisorJob())
     private var timeoutJob: Job? = null

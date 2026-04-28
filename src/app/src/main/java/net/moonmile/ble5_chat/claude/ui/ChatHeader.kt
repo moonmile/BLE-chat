@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,19 +27,34 @@ import androidx.compose.ui.unit.dp
 import net.moonmile.ble5_chat.claude.model.ChatUiState
 
 @Composable
-fun ChatHeader(state: ChatUiState, modifier: Modifier = Modifier) {
+fun ChatHeader(
+    state: ChatUiState,
+    onNavigateToSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Surface(
         modifier = modifier.fillMaxWidth().height(56.dp),
         color = MaterialTheme.colorScheme.primaryContainer
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             BleStatusIndicator(canSend = state.canSend)
             PeerCountBadge(peerCount = state.peerCount)
-            ScanningIndicator(isScanning = state.isScanning)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ScanningIndicator(isScanning = state.isScanning)
+                IconButton(onClick = onNavigateToSettings) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "設定",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
         }
     }
 }
@@ -66,10 +85,8 @@ fun PeerCountBadge(peerCount: Int) {
 
 @Composable
 fun ScanningIndicator(isScanning: Boolean) {
-    if (!isScanning) {
-        Text(text = "  ", style = MaterialTheme.typography.bodySmall)
-        return
-    }
+    if (!isScanning) return
+
     val transition = rememberInfiniteTransition(label = "scan")
     val rotation by transition.animateFloat(
         initialValue = 0f,
@@ -78,9 +95,11 @@ fun ScanningIndicator(isScanning: Boolean) {
         label = "rotation"
     )
     Text(
-        text = "⟳ スキャン中",
-        style = MaterialTheme.typography.bodySmall,
+        text = "⟳",
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onPrimaryContainer,
-        modifier = Modifier.graphicsLayer { rotationZ = rotation }
+        modifier = Modifier
+            .padding(end = 4.dp)
+            .graphicsLayer { rotationZ = rotation }
     )
 }

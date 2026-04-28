@@ -18,6 +18,7 @@ fun ChatScreen(
     onInputChanged: (String) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -28,6 +29,7 @@ fun ChatScreen(
     ) {
         ChatHeader(
             state = state,
+            onNavigateToSettings = onNavigateToSettings,
             modifier = Modifier.fillMaxWidth()
         )
 

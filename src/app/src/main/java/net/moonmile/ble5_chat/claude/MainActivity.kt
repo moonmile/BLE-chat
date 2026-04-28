@@ -1,7 +1,6 @@
 package net.moonmile.ble5_chat.claude
 
 import android.Manifest
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.pm.PackageManager
@@ -21,6 +20,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -37,6 +39,8 @@ import net.moonmile.ble5_chat.claude.model.ChatUiState
 import net.moonmile.ble5_chat.claude.repository.ChatRepository
 import net.moonmile.ble5_chat.claude.repository.ChatRepositoryImpl
 import net.moonmile.ble5_chat.claude.ui.ChatScreen
+import net.moonmile.ble5_chat.claude.ui.CopyrightScreen
+import net.moonmile.ble5_chat.claude.ui.SettingsScreen
 import net.moonmile.ble5_chat.claude.ui.theme.BLE5ChatClaudeTheme
 import net.moonmile.ble5_chat.claude.util.AppLogger
 import net.moonmile.ble5_chat.claude.util.ChatError
@@ -44,16 +48,23 @@ import net.moonmile.ble5_chat.claude.util.DefaultDispatcherProvider
 import net.moonmile.ble5_chat.claude.util.ErrorHandler
 import java.util.UUID
 
+// ── ナビゲーションルート定義 ──────────────────────────────────────
+private object Route {
+    const val CHAT = "chat"
+    const val SETTINGS = "settings"
+    const val COPYRIGHT = "copyright"
+}
+
 class MainActivity : ComponentActivity() {
 
     private val TAG = "MainActivity"
+    private val prefs by lazy { getPreferences(Context.MODE_PRIVATE) }
 
-    // Stable device ID for this session (short 8-char UUID prefix)
-    private val selfId: String by lazy {
-        getPreferences(Context.MODE_PRIVATE).getString("selfId", null)
-            ?: UUID.randomUUID().toString().take(8).also { id ->
-                getPreferences(Context.MODE_PRIVATE).edit().putString("selfId", id).apply()
-            }
+    // SharedPreferences から selfId を読み込み、Flow で保持
+    private val selfIdFlow: MutableStateFlow<String> by lazy {
+        val stored = prefs.getString("selfId", null)
+            ?: UUID.randomUUID().toString().take(8).also { saveSelfId(it) }
+        MutableStateFlow(stored)
     }
 
     private val dispatchers = DefaultDispatcherProvider()
@@ -71,18 +82,14 @@ class MainActivity : ComponentActivity() {
     private val uiState = MutableStateFlow(ChatUiState())
     private val effects = MutableSharedFlow<ChatUiEffect>(extraBufferCapacity = 16)
 
-    // Permission request launcher
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
-        val allGranted = results.values.all { it }
-        if (allGranted) {
+        if (results.values.all { it }) {
             initializeBle()
         } else {
             uiState.update { it.copy(canSend = false, isScanning = false) }
-            lifecycleScope.launch {
-                effects.emit(ChatUiEffect.RequestBluetoothPermission)
-            }
+            lifecycleScope.launch { effects.emit(ChatUiEffect.RequestBluetoothPermission) }
         }
     }
 
@@ -99,18 +106,51 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    val navController = rememberNavController()
                     val state by uiState.collectAsState()
-                    ChatScreen(
-                        state = state,
-                        selfId = selfId,
-                        onSend = { text -> sendMessage(text) },
-                        onInputChanged = { text ->
-                            uiState.update { it.copy(inputText = text) }
-                        },
-                        onStart = { repository.start() },
-                        onStop = { repository.stop() },
+                    val selfId by selfIdFlow.collectAsState()
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = Route.CHAT,
                         modifier = Modifier.statusBarsPadding()
-                    )
+                    ) {
+                        // ── チャット画面 ──────────────────────────
+                        composable(Route.CHAT) {
+                            ChatScreen(
+                                state = state,
+                                selfId = selfId,
+                                onSend = { text -> sendMessage(text, selfId) },
+                                onInputChanged = { text ->
+                                    uiState.update { it.copy(inputText = text) }
+                                },
+                                onStart = { repository.start() },
+                                onStop = { repository.stop() },
+                                onNavigateToSettings = {
+                                    navController.navigate(Route.SETTINGS)
+                                }
+                            )
+                        }
+
+                        // ── 設定画面 ─────────────────────────────
+                        composable(Route.SETTINGS) {
+                            SettingsScreen(
+                                selfId = selfId,
+                                onSelfIdChange = { newId -> updateSelfId(newId) },
+                                onNavigateToCopyright = {
+                                    navController.navigate(Route.COPYRIGHT)
+                                },
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        // ── 著作権画面 ───────────────────────────
+                        composable(Route.COPYRIGHT) {
+                            CopyrightScreen(
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -121,63 +161,58 @@ class MainActivity : ComponentActivity() {
         bleService.release()
     }
 
-    private fun requestBlePermissionsOrInit() {
-        val required = requiredPermissions()
-        val missing = required.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (missing.isEmpty()) {
-            initializeBle()
-        } else {
-            permissionLauncher.launch(missing.toTypedArray())
-        }
+    // ── selfId 変更 ──────────────────────────────────────────────
+    private fun updateSelfId(newId: String) {
+        saveSelfId(newId)
+        selfIdFlow.value = newId
+        AppLogger.d(TAG, "selfId updated: $newId")
     }
 
-    private fun requiredPermissions(): List<String> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        listOf(
-            Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.BLUETOOTH_ADVERTISE,
-            Manifest.permission.BLUETOOTH_CONNECT
-        )
-    } else {
-        listOf(
-            Manifest.permission.BLUETOOTH,
-            Manifest.permission.BLUETOOTH_ADMIN,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        )
+    private fun saveSelfId(id: String) {
+        prefs.edit().putString("selfId", id).apply()
     }
+
+    // ── BLE 初期化 ───────────────────────────────────────────────
+    private fun requestBlePermissionsOrInit() {
+        val missing = requiredPermissions().filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) initializeBle() else permissionLauncher.launch(missing.toTypedArray())
+    }
+
+    private fun requiredPermissions(): List<String> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            listOf(
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_ADVERTISE,
+                Manifest.permission.BLUETOOTH_CONNECT
+            )
+        } else {
+            listOf(
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_ADMIN,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            )
+        }
 
     private fun initializeBle() {
         val btManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         val bleEnabled = btManager.adapter?.isEnabled == true
 
         uiState.update { it.copy(canSend = bleEnabled, isScanning = bleEnabled) }
+        if (bleEnabled) repository.start()
+        else lifecycleScope.launch { effects.emit(ChatUiEffect.NotifyBleDisabled) }
 
-        if (bleEnabled) {
-            repository.start()
-        } else {
-            lifecycleScope.launch { effects.emit(ChatUiEffect.NotifyBleDisabled) }
-        }
-
-        // Observe incoming messages
         lifecycleScope.launch {
             repository.observeMessages().collect { message ->
                 peerRegistry.update(message.senderId)
-                uiState.update { state ->
-                    state.copy(messages = state.messages + message)
-                }
+                uiState.update { it.copy(messages = it.messages + message) }
                 AppLogger.d(TAG, "Received: ${message.messageId} from ${message.senderId}")
             }
         }
-
-        // Observe BLE errors
         lifecycleScope.launch {
-            repository.observeErrors().collect { error ->
-                handleBleError(error)
-            }
+            repository.observeErrors().collect { handleBleError(it) }
         }
-
-        // Observe peer count
         lifecycleScope.launch {
             peerRegistry.peerCount.collect { count ->
                 uiState.update { it.copy(peerCount = count) }
@@ -185,7 +220,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun sendMessage(text: String) {
+    // ── メッセージ送信 ────────────────────────────────────────────
+    private fun sendMessage(text: String, selfId: String) {
         if (text.isBlank()) return
         val message = ChatMessage(
             messageId = UUID.randomUUID().toString(),
@@ -193,16 +229,11 @@ class MainActivity : ComponentActivity() {
             timestamp = System.currentTimeMillis(),
             text = text.take(MessageCodec.MAX_TEXT_LENGTH)
         )
-        // Add to local list immediately so sender sees their own message
-        uiState.update { state ->
-            state.copy(
-                messages = state.messages + message,
-                inputText = ""
-            )
-        }
+        uiState.update { it.copy(messages = it.messages + message, inputText = "") }
         repository.publishMessage(message)
     }
 
+    // ── エラーハンドリング ────────────────────────────────────────
     private fun handleBleError(error: ChatError) {
         AppLogger.e(TAG, "BLE error: $error")
         when (error) {
@@ -214,13 +245,13 @@ class MainActivity : ComponentActivity() {
                 uiState.update { it.copy(canSend = false, isScanning = false) }
                 lifecycleScope.launch { effects.emit(ChatUiEffect.RequestBluetoothPermission) }
             }
-            else -> {
-                val msg = errorHandler.toUserMessage(error)
-                lifecycleScope.launch { effects.emit(ChatUiEffect.ShowToast(msg)) }
+            else -> lifecycleScope.launch {
+                effects.emit(ChatUiEffect.ShowToast(errorHandler.toUserMessage(error)))
             }
         }
     }
 
+    // ── Effect 購読 ────────────────────────────────────────────────
     private fun collectEffects() {
         lifecycleScope.launch {
             effects.collect { effect ->
