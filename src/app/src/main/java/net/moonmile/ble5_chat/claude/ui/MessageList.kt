@@ -12,6 +12,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import net.moonmile.ble5_chat.claude.model.ChatMessage
 import java.text.SimpleDateFormat
@@ -32,6 +37,8 @@ private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
 fun MessageList(
     messages: List<ChatMessage>,
     selfId: String,
+    favoriteIds: Set<String>,
+    onToggleFavorite: (ChatMessage) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -56,7 +63,12 @@ fun MessageList(
                 reverseLayout = false
             ) {
                 items(messages, key = { it.messageId }) { message ->
-                    MessageBubble(message = message, isSelf = message.senderId == selfId)
+                    MessageBubble(
+                        message = message,
+                        isSelf = message.senderId == selfId,
+                        isFavorite = favoriteIds.contains(message.messageId),
+                        onToggleFavorite = { onToggleFavorite(message) }
+                    )
                 }
             }
         }
@@ -64,7 +76,12 @@ fun MessageList(
 }
 
 @Composable
-fun MessageBubble(message: ChatMessage, isSelf: Boolean) {
+fun MessageBubble(
+    message: ChatMessage,
+    isSelf: Boolean,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit
+) {
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp * 0.75f
     val timeStr = timeFormat.format(Date(message.timestamp))
 
@@ -83,33 +100,53 @@ fun MessageBubble(message: ChatMessage, isSelf: Boolean) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = if (isSelf) Arrangement.End else Arrangement.Start
     ) {
-        Column(horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             if (isSelf) {
-                Text(
-                    text = timeStr,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            } else {
-                Text(
-                    text = "${message.senderId}  $timeStr",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
+                FavoriteButton(isFavorite = isFavorite, onClick = onToggleFavorite)
             }
-            Surface(
-                shape = bubbleShape,
-                color = bubbleColor,
-                modifier = Modifier.widthIn(max = maxWidth)
-            ) {
-                Text(
-                    text = message.text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                )
+            Column(horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start) {
+                if (isSelf) {
+                    Text(
+                        text = timeStr,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                } else {
+                    Text(
+                        text = "${message.senderId}  $timeStr",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+                Surface(
+                    shape = bubbleShape,
+                    color = bubbleColor,
+                    modifier = Modifier.widthIn(max = maxWidth)
+                ) {
+                    Text(
+                        text = message.text,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
+                }
+            }
+            if (!isSelf) {
+                FavoriteButton(isFavorite = isFavorite, onClick = onToggleFavorite)
             }
         }
+    }
+}
+
+@Composable
+private fun FavoriteButton(isFavorite: Boolean, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = Icons.Default.Star,
+            contentDescription = "お気に入り切替",
+            tint = if (isFavorite) Color(0xFFFFC107)
+            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+        )
     }
 }

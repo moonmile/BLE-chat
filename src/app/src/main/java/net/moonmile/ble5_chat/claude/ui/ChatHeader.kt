@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +30,7 @@ import net.moonmile.ble5_chat.claude.model.ChatUiState
 @Composable
 fun ChatHeader(
     state: ChatUiState,
+    onNavigateToFavorites: () -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -47,6 +49,13 @@ fun ChatHeader(
             PeerCountBadge(peerCount = state.peerCount)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ScanningIndicator(isScanning = state.isScanning)
+                IconButton(onClick = onNavigateToFavorites) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = "お気に入り",
+                        tint = Color(0xFFFFC107)
+                    )
+                }
                 IconButton(onClick = onNavigateToSettings) {
                     Icon(
                         imageVector = Icons.Default.Settings,

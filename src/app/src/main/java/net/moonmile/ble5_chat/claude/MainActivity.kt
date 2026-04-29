@@ -38,8 +38,10 @@ import net.moonmile.ble5_chat.claude.model.ChatUiEffect
 import net.moonmile.ble5_chat.claude.model.ChatUiState
 import net.moonmile.ble5_chat.claude.repository.ChatRepository
 import net.moonmile.ble5_chat.claude.repository.ChatRepositoryImpl
+import net.moonmile.ble5_chat.claude.repository.FavoriteRepository
 import net.moonmile.ble5_chat.claude.ui.ChatScreen
 import net.moonmile.ble5_chat.claude.ui.CopyrightScreen
+import net.moonmile.ble5_chat.claude.ui.FavoritesScreen
 import net.moonmile.ble5_chat.claude.ui.SettingsScreen
 import net.moonmile.ble5_chat.claude.ui.theme.BLE5ChatClaudeTheme
 import net.moonmile.ble5_chat.claude.util.AppLogger
@@ -53,6 +55,7 @@ private object Route {
     const val CHAT      = "chat"
     const val SETTINGS  = "settings"
     const val COPYRIGHT = "copyright"
+    const val FAVORITES = "favorites"
 }
 
 class MainActivity : ComponentActivity() {
@@ -78,6 +81,7 @@ class MainActivity : ComponentActivity() {
         BleChatService(this, advertiser, scanner, peerRegistry, errorHandler)
     }
     private val repository: ChatRepository by lazy { ChatRepositoryImpl(bleService) }
+    private val favoriteRepository by lazy { FavoriteRepository(this) }
 
     private val uiState = MutableStateFlow(ChatUiState())
     private val effects = MutableSharedFlow<ChatUiEffect>(extraBufferCapacity = 16)
@@ -109,6 +113,7 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     val state  by uiState.collectAsState()
                     val selfId by selfIdFlow.collectAsState()
+                    val favorites by favoriteRepository.favorites.collectAsState()
 
                     NavHost(
                         navController    = navController,
@@ -120,12 +125,15 @@ class MainActivity : ComponentActivity() {
                             ChatScreen(
                                 state                = state,
                                 selfId               = selfId,
+                                favoriteIds          = favorites.map { it.messageId }.toSet(),
                                 onSend               = { text -> sendMessage(text, selfId) },
                                 onInputChanged       = { text ->
                                     uiState.update { it.copy(inputText = text) }
                                 },
                                 onStart              = { repository.start() },
                                 onStop               = { repository.stop() },
+                                onToggleFavorite     = { message -> favoriteRepository.toggle(message) },
+                                onNavigateToFavorites = { navController.navigate(Route.FAVORITES) },
                                 onNavigateToSettings = { navController.navigate(Route.SETTINGS) }
                             )
                         }
@@ -142,6 +150,13 @@ class MainActivity : ComponentActivity() {
                         composable(Route.COPYRIGHT) {
                             CopyrightScreen(
                                 onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Route.FAVORITES) {
+                            FavoritesScreen(
+                                favorites = favorites,
+                                onNavigateBack = { navController.popBackStack() },
+                                onRemoveFavorite = { messageId -> favoriteRepository.remove(messageId) }
                             )
                         }
                     }
