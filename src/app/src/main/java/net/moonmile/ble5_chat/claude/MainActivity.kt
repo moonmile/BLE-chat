@@ -38,8 +38,10 @@ import net.moonmile.ble5_chat.claude.model.ChatUiEffect
 import net.moonmile.ble5_chat.claude.model.ChatUiState
 import net.moonmile.ble5_chat.claude.repository.ChatRepository
 import net.moonmile.ble5_chat.claude.repository.ChatRepositoryImpl
+import net.moonmile.ble5_chat.claude.repository.FavoriteRepository
 import net.moonmile.ble5_chat.claude.ui.ChatScreen
 import net.moonmile.ble5_chat.claude.ui.CopyrightScreen
+import net.moonmile.ble5_chat.claude.ui.FavoritesScreen
 import net.moonmile.ble5_chat.claude.ui.SettingsScreen
 import net.moonmile.ble5_chat.claude.ui.theme.BLE5ChatClaudeTheme
 import net.moonmile.ble5_chat.claude.util.AppLogger
@@ -53,6 +55,7 @@ private object Route {
     const val CHAT      = "chat"
     const val SETTINGS  = "settings"
     const val COPYRIGHT = "copyright"
+    const val FAVORITES = "favorites"
 }
 
 class MainActivity : ComponentActivity() {
@@ -67,10 +70,10 @@ class MainActivity : ComponentActivity() {
         MutableStateFlow(stored)
     }
 
-    private val dispatchers    = DefaultDispatcherProvider()
+    private val dispatchers     = DefaultDispatcherProvider()
     private val duplicateFilter = DuplicateFilter()
-    private val peerRegistry   = PeerRegistry()
-    private val errorHandler   = ErrorHandler()
+    private val peerRegistry    = PeerRegistry()
+    private val errorHandler    = ErrorHandler()
 
     private val advertiser by lazy { BleAdvertiserManager(this, dispatchers) }
     private val scanner    by lazy { BleScannerManager(this, duplicateFilter) }
@@ -78,6 +81,9 @@ class MainActivity : ComponentActivity() {
         BleChatService(this, advertiser, scanner, peerRegistry, errorHandler)
     }
     private val repository: ChatRepository by lazy { ChatRepositoryImpl(bleService) }
+
+    /** お気に入りリポジトリ（SharedPreferences を共有） */
+    private val favoriteRepository by lazy { FavoriteRepository(prefs) }
 
     private val uiState = MutableStateFlow(ChatUiState())
     private val effects = MutableSharedFlow<ChatUiEffect>(extraBufferCapacity = 16)
@@ -107,8 +113,10 @@ class MainActivity : ComponentActivity() {
                     color    = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    val state  by uiState.collectAsState()
-                    val selfId by selfIdFlow.collectAsState()
+                    val state     by uiState.collectAsState()
+                    val selfId    by selfIdFlow.collectAsState()
+                    val favorites by favoriteRepository.favorites.collectAsState()
+                    val favoriteIds = favorites.map { it.messageId }.toSet()
 
                     NavHost(
                         navController    = navController,
@@ -118,15 +126,18 @@ class MainActivity : ComponentActivity() {
                         // チャット画面
                         composable(Route.CHAT) {
                             ChatScreen(
-                                state                = state,
-                                selfId               = selfId,
-                                onSend               = { text -> sendMessage(text, selfId) },
-                                onInputChanged       = { text ->
+                                state                 = state,
+                                selfId                = selfId,
+                                favoriteIds           = favoriteIds,
+                                onSend                = { text -> sendMessage(text, selfId) },
+                                onInputChanged        = { text ->
                                     uiState.update { it.copy(inputText = text) }
                                 },
-                                onStart              = { repository.start() },
-                                onStop               = { repository.stop() },
-                                onNavigateToSettings = { navController.navigate(Route.SETTINGS) }
+                                onToggleFavorite      = { msg -> favoriteRepository.toggle(msg) },
+                                onStart               = { repository.start() },
+                                onStop                = { repository.stop() },
+                                onNavigateToSettings  = { navController.navigate(Route.SETTINGS) },
+                                onNavigateToFavorites = { navController.navigate(Route.FAVORITES) }
                             )
                         }
                         // 設定画面
@@ -141,6 +152,14 @@ class MainActivity : ComponentActivity() {
                         // 著作権情報画面
                         composable(Route.COPYRIGHT) {
                             CopyrightScreen(
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                        // お気に入り画面
+                        composable(Route.FAVORITES) {
+                            FavoritesScreen(
+                                favorites      = favorites,
+                                onRemove       = { messageId -> favoriteRepository.remove(messageId) },
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }
@@ -199,7 +218,9 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch { repository.observeErrors().collect { handleBleError(it) } }
         lifecycleScope.launch {
-            peerRegistry.peerCount.collect { count -> uiState.update { it.copy(peerCount = count) } }
+            peerRegistry.peerCount.collect { count ->
+                uiState.update { it.copy(peerCount = count) }
+            }
         }
     }
 

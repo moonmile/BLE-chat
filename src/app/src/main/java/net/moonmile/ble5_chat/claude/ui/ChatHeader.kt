@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,28 +31,40 @@ import net.moonmile.ble5_chat.claude.model.ChatUiState
 fun ChatHeader(
     state: ChatUiState,
     onNavigateToSettings: () -> Unit,
+    onNavigateToFavorites: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth().height(56.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp),
         color = MaterialTheme.colorScheme.primaryContainer
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             BleStatusIndicator(canSend = state.canSend)
             PeerCountBadge(peerCount = state.peerCount)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ScanningIndicator(isScanning = state.isScanning)
+                // お気に入りボタン
+                IconButton(onClick = onNavigateToFavorites) {
+                    Icon(
+                        imageVector        = Icons.Default.Star,
+                        contentDescription = "お気に入り",
+                        tint               = Color(0xFFFFC107)
+                    )
+                }
+                // 設定ボタン
                 IconButton(onClick = onNavigateToSettings) {
                     Icon(
-                        imageVector = Icons.Default.Settings,
+                        imageVector        = Icons.Default.Settings,
                         contentDescription = "設定",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        tint               = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -96,6 +109,8 @@ fun ScanningIndicator(isScanning: Boolean) {
         text     = "⟳",
         style    = MaterialTheme.typography.bodyMedium,
         color    = MaterialTheme.colorScheme.onPrimaryContainer,
-        modifier = Modifier.padding(end = 4.dp).graphicsLayer { rotationZ = rotation }
+        modifier = Modifier
+            .padding(end = 4.dp)
+            .graphicsLayer { rotationZ = rotation }
     )
 }
