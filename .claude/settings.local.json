@@ -7,7 +7,8 @@
       "Bash(sed -i 's|testInstrumentationRunner = \"androidx.test.runner.AndroidJUnitRunner\"|testInstrumentationRunner = \"androidx.test.runner.AndroidJUnitRunner\"\\\\n\\\\n        // BLE タイミング定数（秒単位）\\\\n        buildConfigField\\(\"int\", \"ADVERTISE_DURATION_SEC\",   \"10\"\\)\\\\n        buildConfigField\\(\"int\", \"DUPLICATE_FILTER_TTL_SEC\", \"30\"\\)\\\\n        buildConfigField\\(\"int\", \"PEER_TIMEOUT_SEC\",         \"60\"\\)|' app/build.gradle.kts)",
       "Bash(sed -i 's|compose = true|compose = true\\\\n        buildConfig = true|' app/build.gradle.kts)",
       "Bash(sed -i 's|implementation\\(libs.kotlinx.coroutines.android\\)|implementation\\(libs.kotlinx.coroutines.android\\)\\\\n    implementation\\(libs.androidx.navigation.compose\\)|' app/build.gradle.kts)",
-      "Bash(./gradlew assembleDebug --no-daemon)"
+      "Bash(./gradlew assembleDebug --no-daemon)",
+      "Bash(./gradlew assembleDebugAndroidTest --no-daemon)"
     ]
   }
 }
