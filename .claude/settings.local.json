@@ -14,7 +14,8 @@
       "Bash(powershell.exe -Command \"New-Item -ItemType Directory -Force 'H:\\\\BLE-chat\\\\src\\\\app\\\\src\\\\test\\\\java\\\\net\\\\moonmile\\\\ble5_chat\\\\claude\\\\ble' | Out-Null; New-Item -ItemType Directory -Force 'H:\\\\BLE-chat\\\\src\\\\app\\\\src\\\\test\\\\java\\\\net\\\\moonmile\\\\ble5_chat\\\\claude\\\\util' | Out-Null; New-Item -ItemType Directory -Force 'H:\\\\BLE-chat\\\\src\\\\app\\\\src\\\\test\\\\java\\\\net\\\\moonmile\\\\ble5_chat\\\\claude\\\\model' | Out-Null; Write-Host 'done'\")",
       "Read(//mnt/h/BLE-chat/**)",
       "Bash(./gradlew test *)",
-      "Bash(powershell.exe -Command \"Set-Location 'H:\\\\BLE-chat\\\\src'; .\\\\gradlew test --no-daemon 2>&1 | Select-Object -Last 80\" -NonInteractive)"
+      "Bash(powershell.exe -Command \"Set-Location 'H:\\\\BLE-chat\\\\src'; .\\\\gradlew test --no-daemon 2>&1 | Select-Object -Last 80\" -NonInteractive)",
+      "PowerShell(New-Item -ItemType Directory -Force 'H:\\\\BLE-chat\\\\src\\\\app\\\\src\\\\test\\\\resources\\\\mockito-extensions')"
     ]
   }
 }
