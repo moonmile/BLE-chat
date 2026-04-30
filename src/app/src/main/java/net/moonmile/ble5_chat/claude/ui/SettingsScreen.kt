@@ -45,6 +45,7 @@ fun SettingsScreen(
     selfId: String,
     onSelfIdChange: (String) -> Unit,
     onNavigateToCopyright: () -> Unit,
+    onNavigateToDebugPing: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -95,6 +96,11 @@ fun SettingsScreen(
             SettingsItem("重複排除 TTL",  "${BuildConfig.DUPLICATE_FILTER_TTL_SEC} 秒")
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             SettingsItem("参加者タイムアウト", "${BuildConfig.PEER_TIMEOUT_SEC} 秒")
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+            // ── デバッグ ──────────────────────────────────────
+            SettingsSectionHeader("デバッグ")
+            SettingsNavigationItem("疎通確認", onClick = onNavigateToDebugPing)
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
             // ── アプリ情報 ────────────────────────────────────

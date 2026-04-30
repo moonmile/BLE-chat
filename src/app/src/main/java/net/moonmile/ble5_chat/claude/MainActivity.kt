@@ -41,6 +41,7 @@ import net.moonmile.ble5_chat.claude.repository.ChatRepositoryImpl
 import net.moonmile.ble5_chat.claude.repository.FavoriteRepository
 import net.moonmile.ble5_chat.claude.ui.ChatScreen
 import net.moonmile.ble5_chat.claude.ui.CopyrightScreen
+import net.moonmile.ble5_chat.claude.ui.DebugPingScreen
 import net.moonmile.ble5_chat.claude.ui.FavoritesScreen
 import net.moonmile.ble5_chat.claude.ui.SettingsScreen
 import net.moonmile.ble5_chat.claude.ui.theme.BLE5ChatClaudeTheme
@@ -52,10 +53,11 @@ import java.util.UUID
 
 // ── ルート定義 ────────────────────────────────────────────────────
 private object Route {
-    const val CHAT      = "chat"
-    const val SETTINGS  = "settings"
-    const val COPYRIGHT = "copyright"
-    const val FAVORITES = "favorites"
+    const val CHAT       = "chat"
+    const val SETTINGS   = "settings"
+    const val COPYRIGHT  = "copyright"
+    const val FAVORITES  = "favorites"
+    const val DEBUG_PING = "debug_ping"
 }
 
 class MainActivity : ComponentActivity() {
@@ -146,6 +148,7 @@ class MainActivity : ComponentActivity() {
                                 selfId                = selfId,
                                 onSelfIdChange        = { newId -> updateSelfId(newId) },
                                 onNavigateToCopyright = { navController.navigate(Route.COPYRIGHT) },
+                                onNavigateToDebugPing = { navController.navigate(Route.DEBUG_PING) },
                                 onNavigateBack        = { navController.popBackStack() }
                             )
                         }
@@ -160,6 +163,15 @@ class MainActivity : ComponentActivity() {
                             FavoritesScreen(
                                 favorites      = favorites,
                                 onRemove       = { messageId -> favoriteRepository.remove(messageId) },
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                        // 疎通確認（デバッグ）画面
+                        composable(Route.DEBUG_PING) {
+                            DebugPingScreen(
+                                messages       = state.messages,
+                                selfId         = selfId,
+                                onSend         = { text -> sendMessage(text, selfId) },
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }
