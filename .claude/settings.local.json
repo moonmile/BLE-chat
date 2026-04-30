@@ -8,7 +8,13 @@
       "Bash(sed -i 's|compose = true|compose = true\\\\n        buildConfig = true|' app/build.gradle.kts)",
       "Bash(sed -i 's|implementation\\(libs.kotlinx.coroutines.android\\)|implementation\\(libs.kotlinx.coroutines.android\\)\\\\n    implementation\\(libs.androidx.navigation.compose\\)|' app/build.gradle.kts)",
       "Bash(./gradlew assembleDebug --no-daemon)",
-      "Bash(./gradlew assembleDebugAndroidTest --no-daemon)"
+      "Bash(./gradlew assembleDebugAndroidTest --no-daemon)",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'H:\\\\BLE-chat\\\\src\\\\app\\\\src\\\\' | Select-Object Name\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem -Recurse 'H:\\\\BLE-chat\\\\src\\\\app\\\\src\\\\test\\\\' | Select-Object FullName\")",
+      "Bash(powershell.exe -Command \"New-Item -ItemType Directory -Force 'H:\\\\BLE-chat\\\\src\\\\app\\\\src\\\\test\\\\java\\\\net\\\\moonmile\\\\ble5_chat\\\\claude\\\\ble' | Out-Null; New-Item -ItemType Directory -Force 'H:\\\\BLE-chat\\\\src\\\\app\\\\src\\\\test\\\\java\\\\net\\\\moonmile\\\\ble5_chat\\\\claude\\\\util' | Out-Null; New-Item -ItemType Directory -Force 'H:\\\\BLE-chat\\\\src\\\\app\\\\src\\\\test\\\\java\\\\net\\\\moonmile\\\\ble5_chat\\\\claude\\\\model' | Out-Null; Write-Host 'done'\")",
+      "Read(//mnt/h/BLE-chat/**)",
+      "Bash(./gradlew test *)",
+      "Bash(powershell.exe -Command \"Set-Location 'H:\\\\BLE-chat\\\\src'; .\\\\gradlew test --no-daemon 2>&1 | Select-Object -Last 80\" -NonInteractive)"
     ]
   }
 }
